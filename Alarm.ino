@@ -1,78 +1,128 @@
 /*
   erster Versuch einer Alarmanlage für ein Fahrrad :-)
+  V0.02
+  V0.03 Alarm-LED changed to internal LED (inverted)
+  V0.04 Changed Poti to MPU6050 https://github.com/jrowberg/i2cdevlib
+
   */
 
-#define APP_VERSION "V0.02"
-int Alarm_out = D3;       // hier kann dann später die LED oder der Piezo als Signalgeber angeschlossen werden
-int Sensor = A0;          // hier wird der Sensor (Neigungssensor) angeschlossen. Vorerst mal ein Poti.
-int sensorValue = 0;      // Startwert für Sensor auf 0 gesetzt
-boolean Bewegung = 0;     // wenn Bewegung erkannt wird geht dieser Wert auf 1
-boolean Zeit = 0;         // wenn Zeit abgelaufen ist geht dieser Wert auf 1
-boolean Alarm = 0;        // wenn Alarm ausgelöst wird geht dieser Wert auf 1
+// #define Showallvalues                             //shows values of MPU6050
+#define APP_VERSION "V0.04"
+#include "I2Cdev.h"
+#include "MPU6050.h"
+#include "Wire.h"
+
+// ************************************* diese Werte können angepasst werden ********************************************
 int Zeitvorgabe = 3000;   // hier dann die Zeit in der eine Bewegung erkannt werden muss vorgewählt werden
 int Alarmdauer = 4000;    // hier kann die Zeit angegeben werden wie lange der Alarm mindestens dauert (auch wenn keine Bewegung mehr erkannt wird)
+// *********************************************************************************************************************  
 
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+int Accel_x = 0;
+int StartAccel_x = 0;
+int DiffAccel_x = 0;
+int myStartAccel_y = 0;
+int myStartAccel_z = 0;
+unsigned long zeit;
+static unsigned long last = 0;
 
-// the setup function runs once when you press reset or power the board
+int Alarm_out = LED_BUILTIN;                       // hier kann dann später die LED oder der Piezo als Signalgeber angeschlossen werden
+boolean Bewegung = 0;                              // wenn Bewegung erkannt wird geht dieser Wert auf 1
+boolean Zeit = 0;                                  // wenn Zeit abgelaufen ist geht dieser Wert auf 1
+boolean Alarm = 0;                                 // wenn Alarm ausgelöst wird geht dieser Wert auf 1
+
+ MPU6050 accelgyro;
+
+                                                   // the setup function runs once when you press reset or power the board
 void setup() {
-   Serial.begin(115200);
-  pinMode(Alarm_out, OUTPUT);   // setzt D3 (Anschluss für Alarmausgang) als Ausgang
-  pinMode(Sensor, INPUT);       // setzt A0 (Anschluss für Alarmsensor) als Eingang
-  delay(1000);                  // Verzögerung zum Start der Sensormessung 
+  Wire.begin(D3, D4);
+  Serial.begin(38400);
+  pinMode(Alarm_out, OUTPUT);                      // setzt D3 (Anschluss für Alarmausgang) als Ausgang
+  delay(1000);                                     // Verzögerung zum Start der Sensormessung 
   Serial.println();
   Serial.println();
   Serial.print("Starting Sensor :");
   Serial.println(APP_VERSION);
   delay(1000);  
- Serial.print ("...");
- delay (1000);                 // Verzögerung zum Start der Sensormessung
- Serial.println (" ... Initialisierung abgeschlossen");
- delay (1000);                 // Verzögerung zum Start der Sensormessung 
+  Serial.print ("...");    
+  Serial.println("Initializing I2C devices...");
+  accelgyro.initialize();                          // initialize device   
+  Serial.println("Testing device connections...");
+  Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");    // verify connection
+  delay (1000);
 }
 
-// the loop function runs over and over again forever
-void loop() {  
-  delay (1000);
-  static unsigned long last = 0;
-  sensorValue = analogRead(Sensor);
-  Serial.print ("Der aktuelle Sensorwert lautet ");
-  Serial.println (sensorValue);
-  
-  // *************************************************  Abhängig vom Sensorwert kann nun etwas ausgeführt werden
-  if (sensorValue > 100) { 
-  Bewegung = 1;
-  Serial.println ("Wert ist grösser 100");
-  Serial.print ("Bewegung erkannt = ");
-  Serial.println (Bewegung);
-   Serial.print ("Zeitdauer erreicht = ");
-  Serial.println (Zeit);
-  Serial.println (" ");
+                                                   // the loop function runs over and over again forever
+void loop() { 
+   
+     accelgyro.getAcceleration(&ax, &ay, &az);
+    // accelgyro.getRotation(&gx, &gy, &gz);
+
+  #ifdef Showallvalues
+     Serial.print(ax); Serial.print("\t");
+     Serial.print(ay); Serial.print("\t");
+     Serial.println(az); Serial.print("\t");    
+    // Serial.print(gx); Serial.print("\t");
+    // Serial.print(gy); Serial.print("\t");
+    // Serial.println(gz);
+  #endif
+
+    Serial.print ("Zeit: ");
+    zeit = millis();
+    Serial.println(zeit);
+    delay(1000);
+
+  if (zeit < 8000) {                                  // setting actual values of MPU6050 as StartAccel 8 sec after power on
+  //  Serial.print ("Startphase ");
+  //  Serial.print(zeit); Serial.print("\t");
+    StartAccel_x = ax;
+    Serial.print("StartAccel X= "); 
+    Serial.print(StartAccel_x); Serial.print("\t");
+    Serial.print ("ActualAccel X= ");
+    Serial.print(ax); Serial.print("\t");
   }
+
+  Accel_x = ax;
+  DiffAccel_x = Accel_x - StartAccel_x;               // calculating difference between Start and Actual Accel
+  Serial.print ("Differenz X = ");
+  Serial.println (DiffAccel_x);
+  delay(1000);
+  
+  if (abs(DiffAccel_x) > 400) { 
+    Bewegung = 1;
+    Serial.print ("Bewegung erkannt = ");
+    Serial.print (Bewegung); Serial.print("\t");
+    Serial.print ("Zeitdauer erreicht = ");
+    Serial.print (Zeit); Serial.print("\t");
+   }
   else
   {
-  Bewegung = 0;
-  Zeit = 0;
-  last = millis();
-  Serial.println ("Wert ist kleiner 100");
-  Serial.print ("Bewegung erkannt =");
-  Serial.println (Bewegung);
-  Serial.print ("Zeitdauer erreicht = ");
-  Serial.println (Zeit);
-  Serial.println (" ");
+    Bewegung = 0;
+    Zeit = 0;
+    last = millis();
+    Serial.print ("Bewegung erkannt =");
+    Serial.print (Bewegung); Serial.print("\t");
+    Serial.print ("Zeitdauer erreicht = ");
+    Serial.print (Zeit); Serial.print("\t");
    }
-// ******************************************************************************** 
+   
 // **************************************************   Messung der Zeit ab Bewegung   
-  if ( (millis() - last) > Zeitvorgabe) {
+  
+  if ((millis() - last) > Zeitvorgabe) {               // if movement is longer than Zeitvorgabe set Zeit = 1
   Zeit = 1;
   }
+  
   // ******************************************************************************
-  delay (1000);
+ 
 
 // Alarm aktivieren ***************************************************************
+
+
 if (Bewegung > 0 && Zeit > 0)
 {
   Alarm = 1;
-  digitalWrite(Alarm_out, Alarm);  
+  //digitalWrite(Alarm_out, !Alarm);  
   Serial.print ("Alarm = " );
   Serial.println (Alarm);
   delay (Alarmdauer);
@@ -80,10 +130,10 @@ if (Bewegung > 0 && Zeit > 0)
 else
 {
   Alarm = 0;
-  digitalWrite(Alarm_out, Alarm);   
+ // digitalWrite(Alarm_out, !Alarm);   
   Serial.print ("Alarm = " );
   Serial.println (Alarm);
 }
-// ********************************************************************************
+
 
 }
