@@ -22,12 +22,17 @@ int16_t gx, gy, gz;
 int Accel_x = 0;
 int StartAccel_x = 0;
 int DiffAccel_x = 0;
-int myStartAccel_y = 0;
-int myStartAccel_z = 0;
+int Accel_y = 0;
+int StartAccel_y = 0;
+int DiffAccel_y = 0;
+int Accel_z = 0;
+int StartAccel_z = 0;
+int DiffAccel_z = 0;
+
 unsigned long zeit;
 static unsigned long last = 0;
 
-int Alarm_out = LED_BUILTIN;                       // hier kann dann später die LED oder der Piezo als Signalgeber angeschlossen werden
+int Alarm_out = D7;                       // hier kann dann später die LED oder der Piezo als Signalgeber angeschlossen werden
 boolean Bewegung = 0;                              // wenn Bewegung erkannt wird geht dieser Wert auf 1
 boolean Zeit = 0;                                  // wenn Zeit abgelaufen ist geht dieser Wert auf 1
 boolean Alarm = 0;                                 // wenn Alarm ausgelöst wird geht dieser Wert auf 1
@@ -81,15 +86,37 @@ void loop() {
     Serial.print(StartAccel_x); Serial.print("\t");
     Serial.print ("ActualAccel X= ");
     Serial.print(ax); Serial.print("\t");
+
+    StartAccel_y = ay;
+    Serial.print("StartAccel Y= "); 
+    Serial.print(StartAccel_y); Serial.print("\t");
+    Serial.print ("ActualAccel Y= ");
+    Serial.print(ay); Serial.print("\t");
+
+    StartAccel_z = az;
+    Serial.print("StartAccel Z= "); 
+    Serial.print(StartAccel_z); Serial.print("\t");
+    Serial.print ("ActualAccel Z= ");
+    Serial.print(az); Serial.print("\t");
   }
 
   Accel_x = ax;
   DiffAccel_x = Accel_x - StartAccel_x;               // calculating difference between Start and Actual Accel
   Serial.print ("Differenz X = ");
   Serial.println (DiffAccel_x);
+
+   Accel_y = ay;
+  DiffAccel_y = Accel_y - StartAccel_y;               // calculating difference between Start and Actual Accel
+  Serial.print ("Differenz Y = ");
+  Serial.println (DiffAccel_y);
+
+   Accel_z = az;
+  DiffAccel_z = Accel_z - StartAccel_z;               // calculating difference between Start and Actual Accel
+  Serial.print ("Differenz Z = ");
+  Serial.println (DiffAccel_z);
   delay(1000);
   
-  if (abs(DiffAccel_x) > 400) { 
+   if ((abs(DiffAccel_x) > 400)||(abs(DiffAccel_y) > 400)||(abs(DiffAccel_z) > 400)) { 
     Bewegung = 1;
     Serial.print ("Bewegung erkannt = ");
     Serial.print (Bewegung); Serial.print("\t");
@@ -122,7 +149,7 @@ void loop() {
 if (Bewegung > 0 && Zeit > 0)
 {
   Alarm = 1;
-  //digitalWrite(Alarm_out, !Alarm);  
+  digitalWrite(Alarm_out, Alarm);  
   Serial.print ("Alarm = " );
   Serial.println (Alarm);
   delay (Alarmdauer);
@@ -130,7 +157,7 @@ if (Bewegung > 0 && Zeit > 0)
 else
 {
   Alarm = 0;
- // digitalWrite(Alarm_out, !Alarm);   
+  digitalWrite(Alarm_out, Alarm);   
   Serial.print ("Alarm = " );
   Serial.println (Alarm);
 }
