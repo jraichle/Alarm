@@ -3,11 +3,12 @@
   V0.02
   V0.03 Alarm-LED changed to internal LED (inverted)
   V0.04 Changed Poti to MPU6050 https://github.com/jrowberg/i2cdevlib
+  V0.05 Y- and Z-Values added
 
   */
 
 // #define Showallvalues                             //shows values of MPU6050
-#define APP_VERSION "V0.04"
+#define APP_VERSION "V0.05"
 #include "I2Cdev.h"
 #include "MPU6050.h"
 #include "Wire.h"
